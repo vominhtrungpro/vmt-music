@@ -47,7 +47,7 @@ def validate_google_jwt(token):
 
 def get_email():
     token = request.headers.get('Authorization')
-    if token != '':
+    if token != None and token != '':
         payload = jwt.decode(token, options={"verify_signature": False})
         email = payload.get("email")
         return email
@@ -115,11 +115,34 @@ def create_music_queue(user_id,url):
     except Exception as e:
         return jsonify({'Message': str(e)}), 500
     
+def get_public_ip():
+    try:
+        response = requests.get('https://httpbin.org/ip')
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('origin')
+        else:
+            print(f"Error: Unable to retrieve public IP (Status code: {response.status_code})")
+            return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+    
 @app.route('/api/insert_music', methods=['POST'])
 def insert_music():
     email = get_email()
     if email == '':
-        return jsonify({'error': 'Unauthorized access.'}), 401
+        ip_address = get_public_ip()
+        email = ip_address
+        user_id,err,code = check_email_exist(email)
+        if err != None:
+            return err,code
+        else:
+            if user_id == None:
+                user_id,err,code = create_user_google(email)
+                if err != None:
+                    return err,code
     else:
         user_id,err,code = check_email_exist(email)
         if err != None:
@@ -139,4 +162,4 @@ def insert_music():
         return jsonify({'Message': 'Success'}), 200
     
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='192.168.1.12', port=5000, debug=True)
