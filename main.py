@@ -69,10 +69,10 @@ def create_user_google(email):
 
             user_id = cursor.lastrowid
             
-            return user_id,''
+            return user_id,None,0
             
     except Exception as e:
-        return None,str(e)
+        return None,jsonify({'Message': str(e)}), 500
         
 def check_email_exist(email):
     try:
@@ -84,20 +84,20 @@ def check_email_exist(email):
                 lr = user[6]  
                 time_difference = current_time - lr
                 if time_difference.total_seconds() <= 5 * 60: 
-                    return None,'Request limited'
+                    return None,jsonify({'Message': 'Request limit'}), 200
                 else:
-                    return user[0],''
+                    return user[0],None,0
             else:
-                return None,''
+                return None,None,0
 
     except Exception as e:
-        return None,str(e)
+        return None,jsonify({'Message': str(e)}), 500
     
 def create_music_queue(user_id,url):
     user_id = user_id
     url = url
     if None in (user_id, url):
-        return 'Thiếu thông tin'
+        return jsonify({'Message': 'Missing data'}), 200
     
     try:
         with conn.cursor() as cursor:
@@ -111,9 +111,9 @@ def create_music_queue(user_id,url):
 
             conn.commit()
 
-            return ''
+            return None,0
     except Exception as e:
-        return str(e)
+        return jsonify({'Message': str(e)}), 500
     
 @app.route('/api/insert_music', methods=['POST'])
 def insert_music():
@@ -121,22 +121,22 @@ def insert_music():
     if email == '':
         return jsonify({'error': 'Unauthorized access.'}), 401
     else:
-        user_id,err = check_email_exist(email)
-        if err != '':
-            return jsonify({'error': err}), 500
+        user_id,err,code = check_email_exist(email)
+        if err != None:
+            return err,code
         else:
             if user_id == None:
-                user_id,err = create_user_google(email)
-                if err != '':
-                    return jsonify({'error': err}), 500
+                user_id,err,code = create_user_google(email)
+                if err != None:
+                    return err,code
 
     data = request.json
     url = data.get('url')
-    result = create_music_queue(user_id,url)
-    if result != '':
-        return jsonify({'error': result}), 500
+    result,code = create_music_queue(user_id,url)
+    if result != None:
+        return result,code
     else:
-        return jsonify({'message': 'Dữ liệu đã được chèn thành công.'}), 200
+        return jsonify({'Message': 'Success'}), 200
     
 if __name__ == '__main__':
     app.run(debug=True)
